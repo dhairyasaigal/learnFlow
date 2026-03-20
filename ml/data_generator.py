@@ -380,7 +380,7 @@ def augment_with_study_hours(
 ) -> tuple:
     """Augments backlog sequences with StudentPerformanceFactors dataset."""
     if path is None:
-        path = BASE_DIR / "data" / "raw" / "study_hours" / "StudentPerformanceFactors.csv"
+        path = BASE_DIR / "data" / "raw" / "student_hours" / "StudentPerformanceFactors.csv"
 
     if not Path(path).exists():
         print("Study hours dataset not found — skipping")
