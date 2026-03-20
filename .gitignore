@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+*.h5
+*.pkl
+data/
+node_modules/
+frontend/dist/
+.DS_Store
+Thumbs.db
