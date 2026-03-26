@@ -4,10 +4,12 @@ export default function Navbar({ user, onLogout }) {
   const loc = useLocation()
 
   const links = [
-    { to: '/',         label: 'Dashboard' },
-    { to: '/quiz',     label: 'Quiz'      },
-    { to: '/log',      label: 'Study Log' },
-    { to: '/subjects', label: 'Subjects'  },
+    { to: '/',         label: 'Dashboard'   },
+    { to: '/quiz',     label: 'Quiz'        },
+    { to: '/plan',     label: 'Study Plan'  },
+    { to: '/log',      label: 'Study Log'   },
+    { to: '/subjects', label: 'Subjects'    },
+    { to: '/analytics', label: 'Analytics'  },
   ]
 
   return (

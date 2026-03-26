@@ -4,9 +4,11 @@ import Dashboard from './pages/Dashboard.jsx'
 import Quiz      from './pages/Quiz.jsx'
 import StudyLog  from './pages/StudyLog.jsx'
 import Subjects  from './pages/Subjects.jsx'
+import StudyPlan from './pages/StudyPlan.jsx'
 import Login     from './pages/login.jsx'
 import Register  from './pages/register.jsx'
 import Landing   from './pages/landing.jsx'
+import Analytics from './pages/Analytics.jsx'
 import Navbar    from './components/navbar.jsx'
 
 export default function App() {
@@ -46,6 +48,8 @@ export default function App() {
           <Route path='/quiz'     element={<Quiz       user={user} />} />
           <Route path='/log'      element={<StudyLog   user={user} />} />
           <Route path='/subjects' element={<Subjects   user={user} />} />
+          <Route path='/plan'     element={<StudyPlan  user={user} />} />
+          <Route path='/analytics' element={<Analytics user={user} />} />
           <Route path='*'         element={<Navigate to='/' />} />
         </Routes>
       </div>
