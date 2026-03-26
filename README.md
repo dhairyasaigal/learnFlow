@@ -56,6 +56,27 @@ LearnFlow addresses all three with predictive AI (LSTMs) and provides real-time 
 
 ---
 
+## 📦 Dependencies & Add-ons
+
+**Backend (Python `requirements.txt`)**
+- `fastapi`, `uvicorn` — High-performance API routing and server
+- `tensorflow`, `numpy`, `pandas`, `scikit-learn` — Predictive ML and LSTM execution
+- `openai`, `python-dotenv` — LLM Study Copilot API connectivity
+- `pydantic` — Data validation
+
+**Frontend (React `package.json`)**
+- `react`, `react-dom` — Core UI framework
+- `react-router-dom` — Client-side navigation mapping
+- `axios` — Handling HTTP requests to the FastAPI backend
+- `vite` — Lightning-fast development server
+
+**Recommended VS Code Add-ons**
+- *Python* (by Microsoft) — Syntax highlighting and environment auto-detection
+- *ESLint* — Enforces code quality for React/JSX
+- *SQLite Viewer* — Easy visualization of the `learnflow.db` from within VS Code
+
+---
+
 ## 📂 Project Structure
 
 ```
