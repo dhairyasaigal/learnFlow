@@ -23,37 +23,56 @@ RAG_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "800"))
 RAG_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "4"))
 RAG_COLLECTION = "learnflow"
+RAG_ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
-
-def _resolve_source_path(raw_path: str) -> Path:
-    base = RAG_SOURCE_DIR.resolve()
+def _get_base_dir() -> Path:
+    base = RAG_SOURCE_DIR
     base.mkdir(parents=True, exist_ok=True)
+    return base.resolve()
+
+
+def _normalize_relative(raw_path: str) -> str:
     candidate = Path(raw_path)
     if candidate.is_absolute():
         raise ValueError("Source paths must be relative to RAG_SOURCE_DIR.")
-    resolved = (base / candidate).resolve(strict=True)
-    if not resolved.is_relative_to(base):
-        raise ValueError(
-            f"Source path {resolved} must be within {base}."
-        )
-    return resolved
+    if ".." in candidate.parts:
+        raise ValueError("Parent traversal is not allowed in source paths.")
+    normalized = candidate.as_posix().strip("/")
+    return normalized or "."
+
+
+def _list_allowed_entries(base: Path) -> Dict[str, Path]:
+    allowed: Dict[str, Path] = {}
+    for item in base.rglob("*"):
+        if item.is_file() and item.suffix.lower() in RAG_ALLOWED_EXTENSIONS:
+            rel = item.relative_to(base).as_posix()
+            allowed[rel] = item.resolve(strict=True)
+    return allowed
 
 
 def _collect_files(paths: Iterable[str]) -> List[Path]:
+    base = _get_base_dir()
+    allowed = _list_allowed_entries(base)
     files: List[Path] = []
+
     for raw_path in paths:
-        resolved = _resolve_source_path(raw_path)
-        if resolved.is_dir():
-            for ext in ("*.pdf", "*.txt", "*.md"):
-                files.extend(resolved.rglob(ext))
-        elif resolved.is_file() and resolved.suffix.lower() in {".pdf", ".txt", ".md"}:
-            files.append(resolved)
-    base = RAG_SOURCE_DIR.resolve()
-    unique_files = sorted({
-        f.resolve(strict=True)
-        for f in files
-        if f.exists() and f.resolve(strict=True).is_relative_to(base)
-    })
+        normalized = _normalize_relative(raw_path)
+        if normalized in allowed:
+            files.append(allowed[normalized])
+            continue
+
+        prefix = "" if normalized == "." else f"{normalized}/"
+        matches = [
+            path for rel, path in allowed.items()
+            if rel.startswith(prefix)
+        ]
+        if not matches:
+            raise FileNotFoundError(
+                f"No ingestible files found for {raw_path} in {base}."
+            )
+        files.extend(matches)
+
+    unique_files = sorted({f.resolve(strict=True) for f in files})
     return unique_files
 
 

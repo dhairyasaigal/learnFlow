@@ -210,6 +210,7 @@ rag_sources/
 ```
 Each chunk is tagged with metadata: `stream`, `subject`, `class_level`, `board`, `chapter`, plus the source file name.
 Paths passed to ingestion must be relative to `RAG_SOURCE_DIR` for safety.
+Only `.pdf`, `.txt`, and `.md` files are indexed.
 
 ### 2) Ingest sources (CLI)
 ```bash

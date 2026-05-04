@@ -88,11 +88,11 @@ def ask_copilot(user_id: int, message: str, history: list = None) -> str:
             subjects=subject_names
         )
         rag_context = rag.format_rag_context(rag_docs)
-    except ValueError as exc:
+    except (ValueError, FileNotFoundError) as exc:
         logger.warning("RAG lookup skipped: %s", exc)
         rag_context = "<RAG_CONTEXT>\nRAG lookup skipped.\n</RAG_CONTEXT>"
-    except Exception:
-        logger.exception("RAG lookup failed")
+    except (ConnectionError, TimeoutError, OSError, RuntimeError) as exc:
+        logger.error("RAG lookup failed: %s", exc)
         rag_context = "<RAG_CONTEXT>\nRAG lookup unavailable.\n</RAG_CONTEXT>"
     
     # We construct a full chat message stream

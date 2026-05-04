@@ -132,14 +132,14 @@ def require_admin(request: Request):
     admin_key = os.getenv("RAG_ADMIN_KEY")
     if not admin_key:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="RAG_ADMIN_KEY not configured"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized"
         )
     provided_key = request.headers.get("X-Admin-Key", "")
     if not secrets.compare_digest(provided_key, admin_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin key required"
+            detail="Unauthorized"
         )
 
 
