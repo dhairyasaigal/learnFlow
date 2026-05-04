@@ -175,6 +175,22 @@ def create_tables():
             )
         """)
 
+        # ── RAG sources ────────────────────────────────────
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS rag_sources (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_path   TEXT    NOT NULL UNIQUE,
+                checksum      TEXT    NOT NULL,
+                stream        TEXT,
+                subject       TEXT,
+                class_level   TEXT,
+                board         TEXT,
+                chapter       TEXT,
+                chunk_count   INTEGER DEFAULT 0,
+                last_indexed  DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
     print("All tables created successfully")
 
 
@@ -491,6 +507,42 @@ def get_backlog_alerts(user_id: int) -> list:
             ORDER BY ba.severity_10 DESC
         """, (user_id,)).fetchall()
         return [dict(r) for r in rows]
+
+
+# ─────────────────────────────────────────────────────────────
+# RAG source queries
+# ─────────────────────────────────────────────────────────────
+
+def get_rag_source(source_path: str) -> dict:
+    with get_db() as db:
+        row = db.execute("""
+            SELECT * FROM rag_sources
+            WHERE source_path = ?
+        """, (source_path,)).fetchone()
+        return dict(row) if row else None
+
+
+def upsert_rag_source(source_path: str, checksum: str,
+                      stream: str = None, subject: str = None,
+                      class_level: str = None, board: str = None,
+                      chapter: str = None, chunk_count: int = 0):
+    with get_db() as db:
+        db.execute("""
+            INSERT INTO rag_sources
+            (source_path, checksum, stream, subject, class_level,
+             board, chapter, chunk_count, last_indexed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(source_path) DO UPDATE SET
+                checksum = excluded.checksum,
+                stream = excluded.stream,
+                subject = excluded.subject,
+                class_level = excluded.class_level,
+                board = excluded.board,
+                chapter = excluded.chapter,
+                chunk_count = excluded.chunk_count,
+                last_indexed = CURRENT_TIMESTAMP
+        """, (source_path, checksum, stream, subject,
+              class_level, board, chapter, chunk_count))
 
 
 # ─────────────────────────────────────────────────────────────
