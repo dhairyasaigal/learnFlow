@@ -26,10 +26,10 @@ RAG_COLLECTION = "learnflow"
 
 
 def _validate_source_path(path: Path) -> Path:
-    resolved = path.resolve()
     base = RAG_SOURCE_DIR.resolve()
     base.mkdir(parents=True, exist_ok=True)
-    if base not in resolved.parents and resolved != base:
+    resolved = path.resolve() if path.is_absolute() else (base / path).resolve()
+    if not resolved.is_relative_to(base):
         raise ValueError(
             f"Source path {resolved} must be within {base}."
         )
@@ -45,7 +45,12 @@ def _collect_files(paths: Iterable[str]) -> List[Path]:
                 files.extend(resolved.rglob(ext))
         elif resolved.is_file():
             files.append(resolved)
-    unique_files = sorted({f for f in files if f.exists()})
+    base = RAG_SOURCE_DIR.resolve()
+    unique_files = sorted({
+        f.resolve()
+        for f in files
+        if f.exists() and f.resolve().is_relative_to(base)
+    })
     return unique_files
 
 

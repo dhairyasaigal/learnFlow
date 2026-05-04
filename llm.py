@@ -1,3 +1,4 @@
+import logging
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -5,6 +6,8 @@ import database as db
 import rag
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
 LLM_MODEL = os.getenv(
@@ -86,6 +89,7 @@ def ask_copilot(user_id: int, message: str, history: list = None) -> str:
         )
         rag_context = rag.format_rag_context(rag_docs)
     except Exception:
+        logger.exception("RAG lookup failed")
         rag_context = "<RAG_CONTEXT>\nRAG lookup unavailable.\n</RAG_CONTEXT>"
     
     # We construct a full chat message stream

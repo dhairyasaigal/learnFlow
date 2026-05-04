@@ -150,8 +150,7 @@ RAG_CHUNK_SIZE=800
 RAG_CHUNK_OVERLAP=120
 RAG_TOP_K=4
 RAG_SOURCE_DIR=./rag_sources
-# Optional: protect RAG management endpoints
-# RAG_ADMIN_KEY=your_admin_key_here
+RAG_ADMIN_KEY=your_admin_key_here
 ```
 
 ### 2. Backend Setup
@@ -221,8 +220,8 @@ python scripts/ingest_rag.py \
 ```
 Reindex unchanged sources by adding `--reindex`.
 
-### 3) Optional admin endpoints
-If `RAG_ADMIN_KEY` is set, include header `X-Admin-Key` for:
+### 3) Admin endpoints
+`RAG_ADMIN_KEY` is required. Include header `X-Admin-Key` for:
 - `POST /rag/ingest` (paths + metadata)
 - `POST /rag/search` (debug retrieval)
 

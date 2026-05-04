@@ -129,7 +129,12 @@ def get_current_user(user_id: int) -> dict:
 
 def require_admin(request: Request):
     admin_key = os.getenv("RAG_ADMIN_KEY")
-    if admin_key and request.headers.get("X-Admin-Key") != admin_key:
+    if not admin_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RAG_ADMIN_KEY not configured"
+        )
+    if request.headers.get("X-Admin-Key") != admin_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Admin key required"
