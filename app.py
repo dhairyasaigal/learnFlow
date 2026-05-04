@@ -1,6 +1,7 @@
 # app.py
 import json
 import os
+import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -134,7 +135,8 @@ def require_admin(request: Request):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="RAG_ADMIN_KEY not configured"
         )
-    if request.headers.get("X-Admin-Key") != admin_key:
+    provided_key = request.headers.get("X-Admin-Key", "")
+    if not secrets.compare_digest(provided_key, admin_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Admin key required"
@@ -674,7 +676,10 @@ def rag_ingest(req: RagIngestRequest, request: Request):
         "board": req.board,
         "chapter": req.chapter
     }
-    results = rag.ingest_paths(req.paths, metadata, reindex=req.reindex)
+    try:
+        results = rag.ingest_paths(req.paths, metadata, reindex=req.reindex)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return {"ingested": results, "count": len(results)}
 
 

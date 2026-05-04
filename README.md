@@ -200,7 +200,7 @@ The LLM will utilize this data to advise the user appropriately.
 LearnFlow can enrich Copilot responses with curriculum sources (NCERT PDFs, notes, or markdown files).
 
 ### 1) Add your sources
-Place study material inside `rag_sources/` (recommended structure below):
+Place study material inside `rag_sources/` (or another directory set by `RAG_SOURCE_DIR`):
 ```
 rag_sources/
   PCM/
@@ -209,11 +209,12 @@ rag_sources/
         Kinematics.pdf
 ```
 Each chunk is tagged with metadata: `stream`, `subject`, `class_level`, `board`, `chapter`, plus the source file name.
+Paths passed to ingestion must be relative to `RAG_SOURCE_DIR` for safety.
 
 ### 2) Ingest sources (CLI)
 ```bash
 python scripts/ingest_rag.py \
-  --path rag_sources/PCM/Physics/11 \
+  --path PCM/Physics/11 \
   --stream PCM \
   --subject Physics \
   --class-level 11

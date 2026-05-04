@@ -88,6 +88,9 @@ def ask_copilot(user_id: int, message: str, history: list = None) -> str:
             subjects=subject_names
         )
         rag_context = rag.format_rag_context(rag_docs)
+    except ValueError as exc:
+        logger.warning("RAG lookup skipped: %s", exc)
+        rag_context = "<RAG_CONTEXT>\nRAG lookup skipped.\n</RAG_CONTEXT>"
     except Exception:
         logger.exception("RAG lookup failed")
         rag_context = "<RAG_CONTEXT>\nRAG lookup unavailable.\n</RAG_CONTEXT>"

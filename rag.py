@@ -25,10 +25,13 @@ RAG_TOP_K = int(os.getenv("RAG_TOP_K", "4"))
 RAG_COLLECTION = "learnflow"
 
 
-def _validate_source_path(path: Path) -> Path:
+def _resolve_source_path(raw_path: str) -> Path:
     base = RAG_SOURCE_DIR.resolve()
     base.mkdir(parents=True, exist_ok=True)
-    resolved = path.resolve() if path.is_absolute() else (base / path).resolve()
+    candidate = Path(raw_path)
+    if candidate.is_absolute():
+        raise ValueError("Source paths must be relative to RAG_SOURCE_DIR.")
+    resolved = (base / candidate).resolve(strict=True)
     if not resolved.is_relative_to(base):
         raise ValueError(
             f"Source path {resolved} must be within {base}."
@@ -39,17 +42,17 @@ def _validate_source_path(path: Path) -> Path:
 def _collect_files(paths: Iterable[str]) -> List[Path]:
     files: List[Path] = []
     for raw_path in paths:
-        resolved = _validate_source_path(Path(raw_path))
+        resolved = _resolve_source_path(raw_path)
         if resolved.is_dir():
             for ext in ("*.pdf", "*.txt", "*.md"):
                 files.extend(resolved.rglob(ext))
-        elif resolved.is_file():
+        elif resolved.is_file() and resolved.suffix.lower() in {".pdf", ".txt", ".md"}:
             files.append(resolved)
     base = RAG_SOURCE_DIR.resolve()
     unique_files = sorted({
-        f.resolve()
+        f.resolve(strict=True)
         for f in files
-        if f.exists() and f.resolve().is_relative_to(base)
+        if f.exists() and f.resolve(strict=True).is_relative_to(base)
     })
     return unique_files
 
@@ -151,7 +154,6 @@ def ingest_paths(paths: Iterable[str],
             "chunk_count": len(split_docs)
         })
 
-    vectorstore.persist()
     return results
 
 
