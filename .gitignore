@@ -15,3 +15,5 @@ Thumbs.db
 *.db
 learnflow.db
 .vscode/
+rag_store/
+rag_sources/

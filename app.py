@@ -1,10 +1,13 @@
 # app.py
 import json
 import logging
+import os
+import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -16,6 +19,13 @@ from ml.indian_curriculum import (
     get_difficulty,
 )
 import llm
+
+try:
+    import rag
+    _RAG_AVAILABLE = True
+except ImportError:
+    rag = None
+    _RAG_AVAILABLE = False
 
 # ── Logging ────────────────────────────────────────────────────
 logging.basicConfig(
@@ -295,6 +305,21 @@ def predict_backlog_safe(study_logs, subject, chapters_total, days_to_exam, exam
 
     return _rule_based_backlog(study_logs, subject, chapters_total, days_to_exam, exam_name)
 
+class RagIngestRequest(BaseModel):
+    paths: List[str]
+    stream: Optional[str] = None
+    subject: Optional[str] = None
+    class_level: Optional[str] = None
+    board: Optional[str] = None
+    chapter: Optional[str] = None
+    reindex: bool = False
+
+class RagSearchRequest(BaseModel):
+    query: str
+    stream: Optional[str] = None
+    subjects: Optional[List[str]] = None
+    top_k: Optional[int] = None
+
 
 # ── Helper ─────────────────────────────────────────────────────
 
@@ -306,6 +331,21 @@ def get_current_user(user_id: int) -> dict:
             detail      = "User not found"
         )
     return user
+
+
+def require_admin(request: Request):
+    admin_key = os.getenv("RAG_ADMIN_KEY")
+    if not admin_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized"
+        )
+    provided_key = request.headers.get("X-Admin-Key", "")
+    if not secrets.compare_digest(provided_key, admin_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized"
+        )
 
 
 # ── Auth routes ────────────────────────────────────────────────
@@ -919,6 +959,41 @@ def get_conversation_messages(conversation_id: str, user_id: int):
         raise HTTPException(403, "Access denied")
     messages = db.get_conversation_messages(conversation_id, limit=50)
     return {"messages": messages}
+
+
+# ── RAG routes ────────────────────────────────────────────────
+
+@app.post("/rag/ingest")
+def rag_ingest(req: RagIngestRequest, request: Request):
+    if not _RAG_AVAILABLE or rag is None:
+        raise HTTPException(503, "RAG dependencies are not installed on this server")
+    require_admin(request)
+    metadata = {
+        "stream": req.stream,
+        "subject": req.subject,
+        "class_level": req.class_level,
+        "board": req.board,
+        "chapter": req.chapter
+    }
+    try:
+        results = rag.ingest_paths(req.paths, metadata, reindex=req.reindex)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"ingested": results, "count": len(results)}
+
+
+@app.post("/rag/search")
+def rag_search(req: RagSearchRequest, request: Request):
+    if not _RAG_AVAILABLE or rag is None:
+        raise HTTPException(503, "RAG dependencies are not installed on this server")
+    require_admin(request)
+    documents = rag.retrieve_documents(
+        query=req.query,
+        stream=req.stream,
+        subjects=req.subjects,
+        top_k=req.top_k
+    )
+    return {"matches": [rag.serialize_document(doc) for doc in documents]}
 
 
 # ── Dashboard route ────────────────────────────────────────────

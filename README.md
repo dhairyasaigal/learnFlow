@@ -119,6 +119,8 @@ learnFlow/
 | **GET** | `/dashboard/{user_id}` | Fetch summary, review queue, backlog alerts |
 | **GET** | `/analytics/{user_id}` | Advanced ML metrics (retention, heatmap, predictions) |
 | **POST** | `/copilot/chat/{user_id}`| Stream chat with AI Copilot (Context-aware) |
+| **POST** | `/rag/ingest` | Admin: ingest or reindex RAG sources |
+| **POST** | `/rag/search` | Admin: debug retrieval (top-k chunks + metadata) |
 | **GET** | `/quiz/{topic_id}/questions` | Get quiz questions (Falls back to LLM to generate more) |
 | **POST** | `/quiz/submit/{user_id}` | Submit quiz, trigger LSTM, schedule next review |
 | **POST** | `/study-plan/{user_id}` | Generate AI-driven exam schedule |
@@ -138,6 +140,17 @@ learnFlow/
 Create a `.env` file in the root `learnFlow` directory:
 ```bash
 OPENROUTER_API_KEY=your_openrouter_api_key_here
+# Or set generic OpenAI-compatible credentials (OpenRouter/Groq)
+# LLM_API_KEY=your_api_key_here
+# LLM_BASE_URL=https://openrouter.ai/api/v1
+# LLM_MODEL=mistralai/mistral-small-3.1-24b-instruct:free
+RAG_STORE_DIR=./rag_store
+RAG_EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+RAG_CHUNK_SIZE=800
+RAG_CHUNK_OVERLAP=120
+RAG_TOP_K=4
+RAG_SOURCE_DIR=./rag_sources
+RAG_ADMIN_KEY=your_admin_key_here
 ```
 
 ### 2. Backend Setup
@@ -182,6 +195,47 @@ The project features an intelligent Copilot. When a user asks a question, the ba
 - Current Backlog Risk
 - Topics urgently needing review
 The LLM will utilize this data to advise the user appropriately.
+
+## 📚 RAG Pipeline (Retrieval-Augmented Generation)
+LearnFlow can enrich Copilot responses with curriculum sources (NCERT PDFs, notes, or markdown files).
+
+### 1) Add your sources
+Place study material inside `rag_sources/` (or another directory set by `RAG_SOURCE_DIR`):
+```
+rag_sources/
+  PCM/
+    Physics/
+      11/
+        Kinematics.pdf
+```
+Each chunk is tagged with metadata: `stream`, `subject`, `class_level`, `board`, `chapter`, plus the source file name.
+Paths passed to ingestion must be relative to `RAG_SOURCE_DIR` for safety.
+Only `.pdf`, `.txt`, and `.md` files are indexed.
+
+### 2) Ingest sources (CLI)
+```bash
+python scripts/ingest_rag.py \
+  --path PCM/Physics/11 \
+  --stream PCM \
+  --subject Physics \
+  --class-level 11
+```
+Reindex unchanged sources by adding `--reindex`.
+
+### 3) Admin endpoints
+`RAG_ADMIN_KEY` is required. Include header `X-Admin-Key` for:
+- `POST /rag/ingest` (paths + metadata)
+- `POST /rag/search` (debug retrieval)
+
+### 4) Copilot behavior
+The Copilot merges user context with `<RAG_CONTEXT>` (delimited) and cites sources like `[1]` when used.
+
+## 🆓 Free LLM API Options
+LearnFlow uses the OpenAI-compatible SDK. You can point it to free tiers:
+- **OpenRouter free models** (default): keep `OPENROUTER_API_KEY` and a `:free` model.
+- **Groq free tier**: set `LLM_BASE_URL=https://api.groq.com/openai/v1` and `LLM_API_KEY`.
+
+> Note: Google Gemini has a generous free tier but is not OpenAI-compatible; it requires a separate SDK integration.
 
 ## 💾 Database Schema Overview
 - **`users`**: Auth, XP, Streaks.
