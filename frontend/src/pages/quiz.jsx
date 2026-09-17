@@ -93,10 +93,29 @@ export default function Quiz({ user }) {
 
     setResult({ score, correct, total: questions.length, results: checkResults })
 
+    // Build per-question attempt detail for the backend
+    const questionAttempts = questions.map(q => {
+      const qid = String(q.id)
+      const res  = checkResults[qid] || {}
+      return {
+        question_id:    q.id,
+        chosen_option:  answers[qid] || '',
+        correct_option: res.answer || '',
+        is_correct:     res.correct || false,
+        time_spent_sec: 0  // could be tracked per-question in future
+      }
+    })
+
     try {
       const r2 = await axios.post(`${API}/quiz/submit/${user.user_id}`, {
-        topic_id: selTopic.id, score, time_spent: timeMins,
-        self_rating: rating, difficulty: Math.round(selTopic.difficulty)
+        topic_id:          selTopic.id,
+        score,
+        time_spent:        timeMins,
+        self_rating:       rating,
+        difficulty:        Math.round(selTopic.difficulty),
+        correct_count:     correct,
+        total_count:       questions.length,
+        question_attempts: questionAttempts
       })
       setXpEarned(r2.data.xp_earned || 0)
     } catch (e) { console.error(e) }

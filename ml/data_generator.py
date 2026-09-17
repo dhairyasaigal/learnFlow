@@ -37,38 +37,44 @@ def generate_forgetting_sequences(
         3. normalised days gap since last review
         4. normalised topic difficulty
         5. normalised self rating
-    Target: 1 = will recall, 0 = will forget
+    Target: 1 = will recall at next review, 0 = will forget
     """
     print(f"Generating {n_sequences} forgetting sequences...")
 
     X, y = [], []
 
     STUDENT_PROFILES = {
-        "strong_retainer":  {"stability_range": (15, 30), "weight": 0.15},
-        "average_retainer": {"stability_range": (7,  15), "weight": 0.50},
-        "weak_retainer":    {"stability_range": (2,   7), "weight": 0.25},
-        "rote_learner":     {"stability_range": (1,   4), "weight": 0.10},
+        "strong_retainer":  {"stability_range": (20, 40), "base_recall": (0.75, 1.00), "weight": 0.20},
+        "average_retainer": {"stability_range": (10, 20), "base_recall": (0.55, 0.85), "weight": 0.40},
+        "weak_retainer":    {"stability_range": (5,  10), "base_recall": (0.35, 0.65), "weight": 0.25},
+        "rote_learner":     {"stability_range": (2,   5), "base_recall": (0.20, 0.50), "weight": 0.15},
     }
 
     profile_names   = list(STUDENT_PROFILES.keys())
     profile_weights = [STUDENT_PROFILES[p]["weight"] for p in profile_names]
-    REVIEW_GAPS     = [1, 1, 2, 3, 3, 5, 7, 7, 10, 14, 21, 30]
+    # Realistic review gaps — SHORT gaps prevent total decay
+    REVIEW_GAPS = [1, 2, 3, 5, 7, 10, 14]
 
     for _ in range(n_sequences):
-        profile_name = np.random.choice(profile_names, p=profile_weights)
-        profile      = STUDENT_PROFILES[profile_name]
-        stability    = np.random.uniform(*profile["stability_range"])
-        difficulty   = np.random.uniform(1.0, 5.0)
-        recall_prob  = np.random.uniform(0.4, 1.0)
-        sequence     = []
+        profile_name  = np.random.choice(profile_names, p=profile_weights)
+        profile       = STUDENT_PROFILES[profile_name]
+        stability     = np.random.uniform(*profile["stability_range"])
+        difficulty    = np.random.uniform(1.0, 5.0)
+
+        # Start each sequence at a realistic recall level for this profile
+        current_recall = np.random.uniform(*profile["base_recall"])
+        sequence       = []
 
         for step in range(seq_len):
-            days_gap    = np.random.choice(REVIEW_GAPS)
-            recall_prob = recall_prob * np.exp(-days_gap / stability)
-            recall_prob = float(np.clip(recall_prob, 0.05, 1.0))
+            days_gap = np.random.choice(REVIEW_GAPS)
 
-            base_score  = recall_prob * 100
-            score       = float(np.clip(base_score + np.random.normal(0, 8), 0, 100))
+            # Decay recall across this gap
+            current_recall = current_recall * np.exp(-days_gap / stability)
+            current_recall = float(np.clip(current_recall, 0.05, 1.0))
+
+            # Score reflects recall with noise
+            base_score  = current_recall * 100
+            score       = float(np.clip(base_score + np.random.normal(0, 10), 0, 100))
             time_spent  = float(np.random.uniform(5 + difficulty * 2, 20 + difficulty * 5))
 
             if score >= 80:
@@ -83,19 +89,23 @@ def generate_forgetting_sequences(
             sequence.append([
                 score / 100,
                 time_spent / 45,
-                days_gap / 30,
+                days_gap / 14,   # normalise against max realistic gap
                 difficulty / 5,
                 self_rating / 5
             ])
 
+            # Successful review boosts stability and replenishes retention
             if score >= 60:
-                stability = stability * (1.0 + 0.3 * (score / 100))
+                stability = min(stability * 1.25, 60.0)
+                current_recall = float(np.clip(0.70 + 0.30 * (score / 100.0), 0.4, 1.0))
             else:
-                stability = max(1.0, stability * 0.85)
+                stability = max(stability * 0.85, 2.0)
+                current_recall = float(np.clip(0.40 + 0.30 * (score / 100.0), 0.2, 0.8))
 
-        next_gap    = np.random.choice([1, 3, 7, 14, 21])
-        next_recall = recall_prob * np.exp(-next_gap / stability)
-        label       = 1 if next_recall > 0.7 else 0
+        # Label: what happens at the NEXT review after this sequence?
+        next_gap       = np.random.choice([2, 4, 7, 10, 14])
+        next_recall    = current_recall * np.exp(-next_gap / stability)
+        label          = 1 if next_recall >= 0.50 else 0
 
         X.append(sequence)
         y.append(label)
@@ -117,6 +127,7 @@ def generate_forgetting_sequences(
 # ─────────────────────────────────────────────────────────────
 # MODEL B — Backlog predictor data generator
 # ─────────────────────────────────────────────────────────────
+
 
 def generate_backlog_sequences(
     n_sequences: int  = 40000,

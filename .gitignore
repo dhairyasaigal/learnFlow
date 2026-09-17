@@ -5,6 +5,7 @@ __pycache__/
 .env
 venv/
 *.h5
+!models/saved/*.h5
 *.pkl
 data/
 node_modules/

@@ -13,7 +13,7 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        _model = tf.keras.models.load_model(str(MODEL_PATH))
+        _model = tf.keras.models.load_model(str(MODEL_PATH), compile=False)
     return _model
 
 
